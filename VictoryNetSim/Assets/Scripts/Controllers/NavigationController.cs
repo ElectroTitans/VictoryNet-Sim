@@ -6,11 +6,13 @@ using UnityEngine.AI;
 public class NavigationController : MonoBehaviour {
 
     public Transform goal;
-    private NavMeshAgent agent;
+    public NavMeshAgent agent;
     // Use this for initialization
     void Start () {
-        
-        
+        agent = GetComponent<NavMeshAgent>();
+        GoToPoint(-0.7f, 0.3f);
+
+
     }
 	
 	// Update is called once per frame
@@ -22,9 +24,10 @@ public class NavigationController : MonoBehaviour {
     {
         float coordX = FindObjectOfType<FieldSettings>().ConvertToCoordX(fieldX);
         float coordY = FindObjectOfType<FieldSettings>().ConvertToFieldY(fieldY);
-        agent.destination = new Vector3(coordX, coordY, transform.position.z);
+        Debug.Log("Moving to Field Coord: " + fieldX + "/" + fieldY + " -> " + coordX + "/" + coordY);
+        agent.destination = new Vector3(coordY, transform.position.y, coordX);
 
-        agent.stoppingDistance = 10;
+       
         
     }
 }

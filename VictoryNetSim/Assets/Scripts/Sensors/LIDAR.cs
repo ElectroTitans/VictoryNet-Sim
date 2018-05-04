@@ -16,17 +16,18 @@ public class LIDAR : MonoBehaviour {
 
 
     public float MaxRange = 40;
-    public float NoiseAmount = 0.1f;
+    public float NoiseAmount = 0f;
     public int NumOfLines = 120;
     public float Angle = 220;
 
     private Transform emitPoint;
     private List<LineRenderer> debugLines = new List<LineRenderer>();
 
+    private LIDARTrainingData trainingData;
 	// Use this for initialization
 	void Start () {
         emitPoint = transform;
-
+        trainingData = FindObjectOfType<LIDARTrainingData>();
         if (DebugLines)
         {
             for (int i = 0; i < NumOfLines; i++)
@@ -89,6 +90,49 @@ public class LIDAR : MonoBehaviour {
             newPoint.angle = angle;
             newPoint.distance = distance;
             points.Add(newPoint);
+
+          
+        }
+
+        return points;
+    }
+
+    public List<float> GetPointsRaw()
+    {
+        List<float> points = new List<float>();
+
+
+        float deegresPerLine = Angle / NumOfLines;
+
+        for (int i = 0; i < NumOfLines; i++)
+        {
+            float angle = (i * deegresPerLine) - (Angle / 2);
+            RaycastHit currentHit;
+            // Lidar.rotation = Quaternion.Euler(Lidar.rotation.eulerAngles.x, Lidar.rotation.eulerAngles.y, i * 2);
+            if (Physics.Raycast(emitPoint.position, Quaternion.Euler(0, angle, 0) * emitPoint.right, out currentHit))
+            {
+                if (DebugLines)
+                {
+                    Debug.DrawLine(emitPoint.position, currentHit.point);
+                    debugLines[i].enabled = true;
+                    debugLines[i].SetPosition(0, emitPoint.position);
+                    debugLines[i].SetPosition(1, currentHit.point);
+                }
+
+            }
+            else
+            {
+                if (DebugLines)
+                {
+                    debugLines[i].enabled = false;
+                }
+
+            }
+
+
+            float distance = Mathf.Clamp(currentHit.distance / MaxRange, 0, 1) + Random.Range(-NoiseAmount / 2, NoiseAmount / 2);
+
+            points.Add(distance);
         }
 
         return points;
