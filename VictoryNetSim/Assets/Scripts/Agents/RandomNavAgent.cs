@@ -23,12 +23,8 @@ public class RandomNavAgent : MonoBehaviour {
     {
         float fieldX = Random.Range(-0.95f, 0.95f);
         float fieldY = Random.Range(-0.95f, 0.95f);
-        
 
-        float randomX = field.ConvertToCoordX(fieldX);
-        float randomY = field.ConvertToCoordY(fieldY);
-
-        target = new Vector3(randomY, 0.1f, randomX);
+        target = field.ConvertToUnityFromCoord(new Vector2(fieldX, fieldY), 1);
         targetMesh.transform.parent = null;
         targetMesh.transform.position = target;
         agent.SetDestination(target);

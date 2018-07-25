@@ -1,27 +1,32 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using MLAgents;
 public class MovementAgents : Agent {
     private DriveController botController;
     private FieldSettings field;
     private LIDAR lidar;
 
-    private Vector3 target;
-    private Vector2 tagetFieldCoord;
+    private Vector3 targetUnityCoord;
+    private Vector2 targetFieldCoord;
+
+
     public GameObject goalObject;
     GameObject targetCube;
     bool isColliding = false;
     float lastThrottle = 0;
+    float lastTurn = 0;
     bool isResetting = false;
-
+    public bool polarCoordDif = false;
     public int lesson = 0; // 0 = Drive Straight, 1 = Drive to AUto Lone, 2 = Drive to X line, 3 = Drive to X,Y
-
+    Vector3 startingPos;
     private void Start()
     {
         botController = GetComponent<DriveController>();
         lidar = GetComponentInChildren<LIDAR>();
         field = FindObjectOfType<FieldSettings>();
+        goalObject.transform.parent = null;
+        startingPos = transform.position;
     }
     private void OnCollisionStay(Collision collision)
     {
@@ -31,90 +36,83 @@ public class MovementAgents : Agent {
         }
     }
     float lastDistance = float.MaxValue;
+    float lastRotate = float.MaxValue;
     public override void AgentReset()
     {
-      
-       
-        isColliding = false;
         lastDistance = float.MaxValue;
+        lastRotate = float.MaxValue;
+        isColliding = false;
+        
 
         Destroy(targetCube);
-        CancelInvoke("OnCompleteTimeout");
+      
+        Vector3 _startPos = startingPos;
+        _startPos.z += field.ConvertToUnityY(Random.Range(-0.7f, 0.7f));
+        transform.position = _startPos;
+        targetFieldCoord.x = Random.Range(-0.95f, 0.95f);
+        targetFieldCoord.y = Random.Range(-0.95f, 0.95f);
 
-        Vector3 randomPos = new Vector3(field.ConvertToCoordY(-0.9f), transform.position.y, field.ConvertToCoordX(0));
-       // transform.position = randomPos;
-       // transform.eulerAngles = new Vector3(0,0,0);
-
-
-        float fieldX = Random.Range(-0.95f, 0.95f);
-        float fieldY = Random.Range(-0.95f, 0.95f);
-
-       
-
-        float randomX = field.ConvertToCoordX(fieldX);
-        float randomY = field.ConvertToCoordY(fieldY);
-
-        Monitor.Log("Lesson", lesson);
-        switch (lesson)
-        {
-            case 0:
-                tagetFieldCoord.x = 0;
-                tagetFieldCoord.y = -0.6f;
-                target = new Vector3(field.ConvertToCoordY(-0.6f), 0.1f, 0);
-                break;
-
-            case 1:
-                tagetFieldCoord.x = 0;
-                tagetFieldCoord.y = -0.4f;
-                target = new Vector3(field.ConvertToCoordY(-0.3f), 0.1f,0);
-                break;
-            case 2:
-                tagetFieldCoord.x = 0;
-                tagetFieldCoord.y = fieldY;
-                target = new Vector3(randomY, 0.1f, 0);
-                break;
-            case 3:
-                tagetFieldCoord.x = fieldX;
-                tagetFieldCoord.y = fieldY;
-                target = new Vector3(randomY, 0.1f, randomX);
-                break;
-        }
+  
+        targetUnityCoord = field.ConvertToUnityFromCoord(targetFieldCoord, 1);
 
 
-        goalObject.transform.position = target;
-       
-       
-        Invoke("OnCompleteTimeout", 20f);
+        goalObject.transform.position = targetUnityCoord;
+
+        
+        //Invoke("OnCompleteTimeout", 20f);
     }
 
     public override void CollectObservations()
     {
         float heading = transform.rotation.eulerAngles.y;
         heading /= 360;
-        Vector3 currentFieldPos = new Vector3(field.ConvertToFieldX(transform.position.z), field.ConvertToFieldY(transform.position.x), 0);
+        Vector3 currentFieldPos = field.ConvertToCoordFromUnity(transform.position);
+
+        Vector2 diffrence = new Vector2(currentFieldPos.x - targetFieldCoord.x, currentFieldPos.y - targetFieldCoord.y);
+        Vector2 polarDif = CartesianToPolar(diffrence);
+
+        Monitor.Log("Current Field Pos", currentFieldPos.ToString(), transform);
+        Monitor.Log("Current Diffrence", diffrence.ToString(), transform);
+        Monitor.Log("Target Field", targetFieldCoord.ToString(), transform);
+
         AddVectorObs(currentFieldPos.x);
         AddVectorObs(currentFieldPos.y);
-        AddVectorObs(tagetFieldCoord.x);
-        AddVectorObs(tagetFieldCoord.y);
+        AddVectorObs(diffrence.x);
+        AddVectorObs(diffrence.y);
+        //AddVectorObs(currentFieldPos.x);
+        //AddVectorObs(currentFieldPos.y);
+        //AddVectorObs(tagetFieldCoord.x);
+        //AddVectorObs(tagetFieldCoord.y);
         AddVectorObs(heading);
+        //AddVectorObs(GetComponent<Rigidbody>().velocity.z);
+        //AddVectorObs(GetComponent<Rigidbody>().velocity.x);
         AddVectorObs(lidar.GetPointsRaw());
     }
 
     
     public override void AgentAction(float[] vectorAction, string textAction)
     {
-        Debug.Log("Actions: " + vectorAction.Length);
+        
+
         float throttle = Mathf.Clamp(vectorAction[0], -1, 1);
         float turn = Mathf.Clamp(vectorAction[1], -1, 1);
 
-        Vector3 currentFieldPos = new Vector3(field.ConvertToFieldX(transform.position.z),field.ConvertToFieldY(transform.position.x), 0);
-        float distance = Vector3.Distance(transform.position, target);
-        float distanceX = Mathf.Abs(currentFieldPos.x - tagetFieldCoord.x) / 2;
-        float distanceY = Mathf.Abs(currentFieldPos.y - tagetFieldCoord.y) / 2;
+        Vector3 currentFieldPos = field.ConvertToCoordFromUnity(transform.position);
 
-        float normalizedDistanace = 0;
+        if(currentFieldPos.x > 1.2 || currentFieldPos.x < -1.2 || currentFieldPos.y > 1.2 || currentFieldPos.y < -1.2)
+        {
+            Done();
+        }
+
+        float distance = Vector2.Distance(currentFieldPos, targetFieldCoord);
+
+
+        float distanceX = Mathf.Abs(currentFieldPos.x - targetFieldCoord.x) / 2;
+        float distanceY = Mathf.Abs(currentFieldPos.y - targetFieldCoord.y) / 2;
+        
+        float normalizedDistanace = distanceX + distanceY / 2;
         Vector3 forward = transform.TransformDirection(Vector3.right);
-        Vector3 toOther = target - transform.position;
+        Vector3 toOther = targetUnityCoord - transform.position;
         float rotationDif = Mathf.Abs(Vector3.Angle(forward, toOther));
 
         if(rotationDif > 180)
@@ -122,79 +120,79 @@ public class MovementAgents : Agent {
             rotationDif -= 360;
         }
         rotationDif = rotationDif / 180;
-      
 
-        if(lesson < 3)
+        
+
+        
+
+        if (lastRotate == float.MaxValue)
         {
-            normalizedDistanace = distanceY;
-        }
-        else
-        {
-           
-            normalizedDistanace = (distanceX + distanceY) / 2;
+            lastRotate = Mathf.Abs(rotationDif);
         }
 
-        AddReward(0.3f  - (Mathf.Abs(rotationDif) * 0.75f));
-        if (normalizedDistanace < 0.05)
+        Monitor.Log("Distance", distance.ToString(), transform);
+
+        //Time Punishment
+        if (distance < 0.05)
         {
-            if (!isResetting)
-            {
-                isResetting = true;
-                Invoke("OnComplete", 3f);
-            }
-             AddReward(1.0f);
+            AddReward(1.0f);
+            Done();
         }
-        else if (distance < lastDistance && Mathf.Abs(distance - lastDistance) > 0.005) 
-        {
-            lastDistance = distance;
-            Debug.Log("Add Distance");
-            AddReward(3f - normalizedDistanace );
-            
-           
-        }
-        else
-        {
-            AddReward(Mathf.Clamp(-0.2f * turn, -0.2f, -0.08f));
-            if (isResetting)
-            {
-                AddReward(-0.4f);
-            }
-        }
-      
-        AddReward(-0.02f);
+
 
         if (isColliding)
         {
-        
-            AddReward(-0.8f);
+            SetReward(-1.0f);
             isColliding = false;
-           
+            Done();
         }
-        AddReward(0.7f * throttle);
-        AddReward(0.3f * turn);
-        Monitor.Log("Distance", normalizedDistanace);
-        
-        //Time Punishment
-      
 
-      
+        if (distance < lastDistance)
+        {
+            AddReward(0.015f);
+            lastDistance = distance;
+        }
 
+        if (distance > lastDistance)
+        {
+            AddReward(-0.015f);
+            lastDistance = distance;
+        }
+
+
+        AddReward(-0.01f);
+        /*
+         * 
+         *  if(rotationDif< lastRotate)
+        {
+            lastRotate = rotationDif;
+            AddReward(0.02f);
+        }
+        */
+
+        float deltaRotate = lastRotate - Mathf.Abs(rotationDif);
+
+        lastRotate = Mathf.Abs(rotationDif);
+
+  
         FindObjectOfType<DiscordStatus>().SubmitStep(GetCumulativeReward());
-        botController.MovementUpdate(throttle , turn);
+        lastThrottle = Mathf.Clamp(throttle, -1.0f, 1.0f);
+        lastTurn = Mathf.Clamp(turn, -1.0f, 1.0f);
 
+        //transform.position += new Vector3(Mathf.Clamp(throttle, -1.0f, 1.0f) * 0.07f, 0, Mathf.Clamp(turn, -1.0f, 1.0f) * 0.07f);
     }
-
-    void OnComplete()
+    public void FixedUpdate()
     {
-        SetReward(1.0f);
-        isResetting = false;
-        Done();
-     
+        botController.MovementUpdateRotated(lastThrottle, lastTurn);
     }
-
-    void OnCompleteTimeout()
+    private Vector2 CartesianToPolar(Vector2 input)
     {
-        SetReward(-2.0f);
-        Done();
+        Vector2 polar = new Vector2();
+        polar.x = Mathf.Sqrt(Mathf.Pow(input.x, 2)+  Mathf.Pow(input.y, 2));
+        polar.y = Mathf.Atan2(input.y, input.x);
+
+        polar *= Mathf.Deg2Rad;
+
+        return polar;
     }
 }

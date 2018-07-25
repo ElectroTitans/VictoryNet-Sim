@@ -14,7 +14,7 @@ public class DiscordStatus : MonoBehaviour {
     void Start () {
         DateTime epochStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         currentEpochTime = (int)(DateTime.UtcNow - epochStart).TotalSeconds;
-        discord = GetComponent<DiscordController>();
+       discord = GetComponent<DiscordController>();
 	}
 	
 	// Update is called once per frame
@@ -25,9 +25,9 @@ public class DiscordStatus : MonoBehaviour {
 
     public void OnDiscordConnect()
     {
-        discordText.color = Color.green;
-        discordText.text = "Discord Joined!";
-        Debug.Log("Discord Connected");
+      //  discordText.color = Color.green;
+      //  discordText.text = "Discord Joined!";
+      //  Debug.Log("Discord Connected");
     }
 
     public void SubmitStep(float score)
@@ -43,11 +43,12 @@ public class DiscordStatus : MonoBehaviour {
     {
 
         
-        discord.presence.state = "MoveNet Step: " + steps;
-        discord.presence.details = "Last Reward: " + lastScore;
-        discord.presence.largeImageKey = "4056";
-        discord.presence.largeImageText = "Team 4056";
-        discord.presence.startTimestamp = currentEpochTime;
-        DiscordRpc.UpdatePresence(discord.presence);
+       discord.presence.state = "MoveNet Step: " + steps;
+       discord.presence.details = "Last Reward: " + lastScore;
+       discord.presence.largeImageKey = "4056";
+       discord.presence.largeImageText = "Team 4056";
+       discord.presence.startTimestamp = currentEpochTime;
+       
+       DiscordRpc.UpdatePresence(discord.presence);
     }
 }

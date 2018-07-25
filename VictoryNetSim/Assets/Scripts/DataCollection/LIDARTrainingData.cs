@@ -8,13 +8,23 @@ using UnityEngine;
 public class LIDARTrainingData : MonoBehaviour {
 
 
-
+    public class EnvSettings
+    {
+        public int lineNum;
+        public float noise;
+        public float dropout;
+        public float maxRange;
+        public float spinRate;
+        public bool instantMode;
+        
+    }
 
     public struct LidarTrainingEntry
     {
         public float X;
         public float Y;
         public float heading;
+
         public List<float> points;
     };
 
@@ -29,13 +39,32 @@ public class LIDARTrainingData : MonoBehaviour {
     public string BaseFileName = "LIDAR-Points#";
 
     public LIDAR LIDARToTrack;
+    public EncoderSensor EncoderL;
+    public EncoderSensor EncoderR;
     private List<LidarTrainingEntry> CurrentDataSet = new List<LidarTrainingEntry>();
     private FieldSettings field;
+
+    private Vector3 lastCoord;
 	// Use this for initialization
 	void Start () {
         field = FindObjectOfType<FieldSettings>();
         DataLength = LIDARToTrack.NumOfLines +3 ; // Points + x/y + heading
-	}
+
+        string JSONpath = Application.dataPath + "/LIDAR/_settings.json";
+
+        EnvSettings settings = new EnvSettings();
+        settings.dropout = LIDARToTrack.dropOutPercentage;
+        settings.noise = LIDARToTrack.NoiseAmount;
+        settings.lineNum = LIDARToTrack.NumOfLines;
+        settings.maxRange = LIDARToTrack.MaxRange;
+        settings.spinRate = LIDARToTrack.rotateRate;
+        settings.instantMode = LIDARToTrack.AutoUpdate;
+        string json = JsonUtility.ToJson(settings);
+
+        StreamWriter jsonoutStream = System.IO.File.CreateText(JSONpath);
+        jsonoutStream.Write(json);
+        jsonoutStream.Close();
+    }
 	
 	// Update is called once per frame
 	void FixedUpdate () {
@@ -47,15 +76,17 @@ public class LIDARTrainingData : MonoBehaviour {
         {
             AttemptCount = 0;
 
-            Vector3 currentFieldPos = new Vector3(field.ConvertToFieldX(transform.position.z), field.ConvertToFieldY(transform.position.x), 0);
+            Vector2 currentFieldPos = field.ConvertToCoordFromUnity(transform.position);
             float heading = transform.rotation.eulerAngles.y;
             heading /= 360;
+            heading += Random.Range(-0.001f, 0.001f);
             LidarTrainingEntry entry;
             entry.X = currentFieldPos.x;
             entry.Y = currentFieldPos.y;
             entry.heading = heading;
             entry.points = LIDARToTrack.GetPointsRaw();
             AddData(entry);
+            
         }
     }
 
@@ -72,13 +103,14 @@ public class LIDARTrainingData : MonoBehaviour {
             CurrentDataSet.Add(entry);
              
             ExportDataset();
+          
         }
     }
    
     private void ExportDataset()
     {
         List<string[]> rowData = new List<string[]>();
-         Debug.Log("Export Lidar data: " + CurrentDataSet.Count);
+        // Debug.Log("Export Lidar data: " + CurrentDataSet.Count);
        
 
        
@@ -89,7 +121,7 @@ public class LIDARTrainingData : MonoBehaviour {
         rowDataTemp[2] = "Heading";
         for(int i = 3; i < DataLength; i++)
         {
-            rowDataTemp[i] = "Lidar-" + i;
+            rowDataTemp[i] = "L-" + (i - 3);
         }
 
         rowData.Add(rowDataTemp);
@@ -132,6 +164,8 @@ public class LIDARTrainingData : MonoBehaviour {
         outStream.WriteLine(sb);
         outStream.Close();
         CurrentDataSet.Clear();
+
+      
     }
     private string getPath()
     {

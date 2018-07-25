@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using MLAgents;
 public class ScoringAgent : Agent {
 
     public int[] fmsData = new int[3]; // Take the L aka 0

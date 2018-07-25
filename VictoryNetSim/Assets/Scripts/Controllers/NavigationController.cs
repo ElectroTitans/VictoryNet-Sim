@@ -22,7 +22,7 @@ public class NavigationController : MonoBehaviour {
 
     public void GoToPoint (float fieldX, float fieldY)
     {
-        float coordX = FindObjectOfType<FieldSettings>().ConvertToCoordX(fieldX);
+        float coordX = FindObjectOfType<FieldSettings>().ConvertToUnityX(fieldX);
         float coordY = FindObjectOfType<FieldSettings>().ConvertToFieldY(fieldY);
         Debug.Log("Moving to Field Coord: " + fieldX + "/" + fieldY + " -> " + coordX + "/" + coordY);
         agent.destination = new Vector3(coordY, transform.position.y, coordX);

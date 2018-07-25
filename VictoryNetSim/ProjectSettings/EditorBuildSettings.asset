@@ -5,10 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
     path: Assets/Scenes/LIDARTraining.unity
     guid: 4999933a7111c774d901bb7808bb3cc3
+  - enabled: 0
+    path: Assets/Scenes/LIDARTraining_HighLidar.unity
+    guid: e5581422301d94a4aa3a2d75f97b33ba
   m_configObjects: {}

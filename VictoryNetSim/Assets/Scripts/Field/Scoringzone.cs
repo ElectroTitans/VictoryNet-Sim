@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class Scoringzone : MonoBehaviour {
 
+    public bool scored;
+
+
 	// Use this for initialization
 	void Start () {
 		
@@ -13,4 +16,14 @@ public class Scoringzone : MonoBehaviour {
 	void Update () {
 		
 	}
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.tag == "block")
+        {
+            scored = true;
+        }
+    }
+
+
 }
